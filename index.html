@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROSHOD FPS Invoice Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Print Styles - A4 Full Page */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                margin: 0;
+                padding: 0;
+            }
+            
+            html, body {
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+            }
+            
+            .no-print { 
+                display: none !important; 
+            }
+            
+            .container {
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: none !important;
+            }
+            
+            .print-area {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                box-shadow: none !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            
+            .invoice-content {
+                width: 210mm !important;
+                height: 297mm !important;
+                padding: 10mm 15mm !important;
+                padding-bottom: 0 !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                background: white !important;
+            }
+            
+            .footer-wrapper {
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 210mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .footer-img {
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: auto !important;
+                display: block !important;
+            }
+            
+            .header-design {
+                width: 10.3cm !important;
+                height: 4.39cm !important;
+                object-fit: contain !important;
+            }
+            
+            .signature-img {
+                height: 45px !important;
+                object-fit: contain !important;
+            }
+            
+            .main-content {
+                flex: 1 !important;
+                padding-bottom: 70px !important;
+            }
+            
+            @page { 
+                size: A4 portrait; 
+                margin: 0 !important; 
+            }
+        }
+        
+        /* Screen preview styles */
+        .header-design { 
+            width: 10.3cm; 
+            height: 4.39cm; 
+            object-fit: contain; 
+        }
+        .signature-img { 
+            height: 50px; 
+            object-fit: contain; 
+        }
+        .footer-img { 
+            width: 100%; 
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+        .print-area {
+            background: white;
+            width: 210mm;
+            margin: 0 auto;
+            position: relative;
+        }
+        .invoice-content {
+            display: flex;
+            flex-direction: column;
+            min-height: 297mm;
+            height: 297mm;
+            padding: 10mm 15mm;
+            padding-bottom: 0;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+        .footer-wrapper {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 210mm;
+            margin-left: -15mm;
+        }
+        .main-content {
+            flex: 1;
+            padding-bottom: 70px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8 no-print">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-2">📄 ROSHOD CREDIT BILL</h1>
+            <p class="text-gray-600">Upload Excel file and images to generate credit bill</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="no-print max-w-6xl mx-auto mb-8">
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">📁 Upload Files</h2>
+                
+                <!-- Excel Upload -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:border-indigo-500 transition-colors" id="dropZone">
+                        <svg class="mx-auto h-12 w-12 text-indigo-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-gray-600 mb-2">Upload Excel File</p>
+                        <p class="text-sm text-gray-400 mb-3">(Unit Name, Employee, Credit Amount)</p>
+                        <label class="cursor-pointer bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-block text-sm">
+                            <span>Browse Excel</span>
+                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+                        </label>
+                        <div id="fileName" class="mt-3 text-green-600 font-medium text-sm hidden"></div>
+                    </div>
+
+                    <!-- Image Uploads -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="border rounded-lg p-3 text-center">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Company Logo</p>
+                            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
+                                Upload <input type="file" id="logoInput" accept="image/*" class="hidden" onchange="previewImage(this, 'logoPreview')">
+                            </label>
+                            <img id="logoPreview" class="mt-2 h-16 mx-auto hidden">
+                        </div>
+                        <div class="border rounded-lg p-3 text-center">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Header Design</p>
+                            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
+                                Upload <input type="file" id="headerInput" accept="image/*" class="hidden" onchange="previewImage(this, 'headerPreview')">
+                            </label>
+                            <img id="headerPreview" class="mt-2 h-16 mx-auto hidden">
+                        </div>
+                        <div class="border rounded-lg p-3 text-center">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Prepared By Signature</p>
+                            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
+                                Upload <input type="file" id="preparedSigInput" accept="image/*" class="hidden" onchange="previewImage(this, 'preparedSigPreview')">
+                            </label>
+                            <img id="preparedSigPreview" class="mt-2 h-12 mx-auto hidden">
+                        </div>
+                        <div class="border rounded-lg p-3 text-center">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Checked By Signature</p>
+                            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
+                                Upload <input type="file" id="checkedSigInput" accept="image/*" class="hidden" onchange="previewImage(this, 'checkedSigPreview')">
+                            </label>
+                            <img id="checkedSigPreview" class="mt-2 h-12 mx-auto hidden">
+                        </div>
+                        <div class="border rounded-lg p-3 text-center">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Approved By Signature</p>
+                            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
+                                Upload <input type="file" id="approvedSigInput" accept="image/*" class="hidden" onchange="previewImage(this, 'approvedSigPreview')">
+                            </label>
+                            <img id="approvedSigPreview" class="mt-2 h-12 mx-auto hidden">
+                        </div>
+                        <div class="border rounded-lg p-3 text-center">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Footer Image</p>
+                            <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
+                                Upload <input type="file" id="footerInput" accept="image/*" class="hidden" onchange="previewImage(this, 'footerPreview')">
+                            </label>
+                            <img id="footerPreview" class="mt-2 h-12 mx-auto hidden">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Asset Download Button -->
+                <div class="no-print mt-6 text-center">
+                    <a href="https://drive.google.com/drive/folders/1s8rRQ1zod-f_HDntvF_FCJJm9XG_vSh_" 
+                       target="_blank"
+                       class="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        📥 Download Sample Assets
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Settings -->
+        <div class="no-print max-w-6xl mx-auto mb-8" id="settingsSection">
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-6">⚙️ Invoice Settings</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" id="invoiceDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Invoice # Prefix</label>
+                        <input type="text" id="invoicePrefix" value="CR" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                        <input type="text" id="invoiceNumber" value="" placeholder="e.g., 001" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <input type="text" id="companyAddress" value="ROSHOD FPS, Level 2, Hose#02, Road#96, Gulshan-2 Dhaka 1212" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Month</label>
+                        <input type="text" id="invoiceMonth" placeholder="e.g., November 2025" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sales Type</label>
+                        <input type="text" id="salesType" value="Credit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                        <input type="text" id="paymentMethod" value="BFTN/Cheque/Cash" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Filter Options -->
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">🔍 Filter Options</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Store Name Filter</label>
+                        <select id="storeFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-yellow-50" onchange="applyStoreFilter()">
+                            <option value="">-- Select Store --</option>
+                            <option value="Norp Knit">Norp Knit</option>
+                            <option value="ESL">ESL</option>
+                            <option value="ICCL">ICCL</option>
+                            <option value="ICCL-Magnum">ICCL-Magnum</option>
+                            <option value="ICCL-BFL">ICCL-BFL</option>
+                            <option value="HA-MEEM">HA-MEEM</option>
+                            <option value="GBAL">GBAL</option>
+                            <option value="RUPSHI">RUPSHI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit Name Filter (from Excel)</label>
+                        <select id="unitFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-blue-50" onchange="applyUnitFilter()">
+                            <option value="">-- Select Unit --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bill To</label>
+                    <input type="text" id="billTo" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Will auto-fill based on Store Name selection">
+                </div>
+
+                <!-- Signature Names & Positions -->
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Signature Details</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Prepared By Name</label>
+                        <input type="text" id="preparedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 mt-2">Position</label>
+                        <input type="text" id="preparedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Checked By Name</label>
+                        <input type="text" id="checkedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 mt-2">Position</label>
+                        <input type="text" id="checkedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Approved By Name</label>
+                        <input type="text" id="approvedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 mt-2">Position</label>
+                        <input type="text" id="approvedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button onclick="generateInvoice()" class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                        📋 Generate Invoice
+                    </button>
+                    <button onclick="window.print()" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                        🖨️ Print Invoice
+                    </button>
+                    <button onclick="clearAllData()" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium">
+                        🗑️ Clear All Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Data Entry -->
+        <div class="no-print max-w-6xl mx-auto mb-8" id="manualEntrySection">
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">✏️ Manual Data Entry / Edit Table</h2>
+                <p class="text-sm text-gray-500 mb-4">💡 Note: Data is automatically saved and will persist after page refresh.</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <input type="text" id="manualUnit" placeholder="Unit Name" class="px-3 py-2 border border-gray-300 rounded-lg">
+                    <input type="number" id="manualEmployee" placeholder="# of Employees" min="0" class="px-3 py-2 border border-gray-300 rounded-lg">
+                    <input type="number" id="manualCredit" placeholder="Credit Amount" class="px-3 py-2 border border-gray-300 rounded-lg">
+                    <button onclick="addManualEntry()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+ Add Entry</button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full border">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="px-4 py-2 border text-left">Unit Name</th>
+                                <th class="px-4 py-2 border text-center"># Employees</th>
+                                <th class="px-4 py-2 border text-right">Credit Amount</th>
+                                <th class="px-4 py-2 border text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Preview / Print Area -->
+        <div id="invoicePreview" class="print-area bg-white shadow-lg" style="display: none;">
+            <div class="invoice-content">
+                <!-- Main Content Area -->
+                <div class="main-content">
+                    <!-- Header with Logo and Design -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <img id="displayLogo" src="" style="height: 70px; object-fit: contain; display: none;">
+                        </div>
+                        <div>
+                            <img id="displayHeader" src="" class="header-design" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- Invoice Info - Compact -->
+                    <div style="font-size: 12px; line-height: 1.8; margin-bottom: 8px;">
+                        <p><strong>Date:</strong> <span id="displayDate"></span></p>
+                        <p><strong>Invoice#</strong> <span id="displayInvoiceNum"></span></p>
+                        <p><strong>Address:</strong> <span id="displayAddress"></span></p>
+                    </div>
+
+                    <!-- Bill To -->
+                    <div style="font-size: 12px; line-height: 1.8; margin-bottom: 8px;">
+                        <p><strong>Bill To:</strong> <span id="displayBillTo"></span></p>
+                    </div>
+
+                    <!-- Month, Sales Type, Payment - Single Row -->
+                    <div style="font-size: 12px; margin-bottom: 12px;">
+                        <p><strong>Month:</strong> <span id="displayMonth"></span> &nbsp;&nbsp;&nbsp; <strong>Sales Type:</strong> <span id="displaySalesType"></span> &nbsp;&nbsp;&nbsp; <strong>Payment Method:</strong> <span id="displayPayment"></span></p>
+                    </div>
+
+                    <!-- Invoice Table -->
+                    <div style="margin-bottom: 10px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+                            <thead>
+                                <tr style="background-color: #e5e7eb;">
+                                    <th style="border: 1px solid #000; padding: 8px 10px; text-align: left;"><strong>Details</strong></th>
+                                    <th style="border: 1px solid #000; padding: 8px 10px; text-align: center;"><strong>#Employees</strong></th>
+                                    <th style="border: 1px solid #000; padding: 8px 10px; text-align: right;"><strong>Amount</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceTableBody"></tbody>
+                            <tfoot>
+                                <tr style="background-color: #f3f4f6;">
+                                    <td colspan="2" style="border: 1px solid #000; padding: 8px 10px; text-align: right;"><strong>Grand Total:</strong></td>
+                                    <td style="border: 1px solid #000; padding: 8px 10px; text-align: right;"><strong id="grandTotal">৳0.00</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- In Words - Below Table with extra spacing -->
+                    <div style="font-size: 13px; margin-bottom: 80px; padding-bottom: 10px;">
+                        <p><strong>In Words:</strong> <span id="amountInWords"></span></p>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div style="text-align: center; font-size: 12px; margin-bottom: 60px;">
+                        <p>If you have any questions concerning this invoice, use the following contact information:</p>
+                        <p>Phone: +8801332532151, email: roshod.wellbeing@gmail.com, web: www.roshodfps.com</p>
+                    </div>
+
+                    <!-- Signatures Section with extra spacing before -->
+                    <div style="margin-top: 20px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; text-align: center; font-size: 12px;">
+                            <div style="flex: 1;"><strong>Prepared by</strong></div>
+                            <div style="flex: 1;"><strong>Checked By</strong></div>
+                            <div style="flex: 1;"><strong>Approved By</strong></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; text-align: center;">
+                            <div style="flex: 1;"><img id="displayPreparedSig" src="" class="signature-img" style="display: none; margin: 0 auto;"></div>
+                            <div style="flex: 1;"><img id="displayCheckedSig" src="" class="signature-img" style="display: none; margin: 0 auto;"></div>
+                            <div style="flex: 1;"><img id="displayApprovedSig" src="" class="signature-img" style="display: none; margin: 0 auto;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px;">
+                            <div style="flex: 1;">
+                                <p id="displayPreparedName"></p>
+                                <p id="displayPreparedPosition" style="color: #666;"></p>
+                            </div>
+                            <div style="flex: 1;">
+                                <p id="displayCheckedName"></p>
+                                <p id="displayCheckedPosition" style="color: #666;"></p>
+                            </div>
+                            <div style="flex: 1;">
+                                <p id="displayApprovedName"></p>
+                                <p id="displayApprovedPosition" style="color: #666;"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer - Full Width at Bottom -->
+                <div class="footer-wrapper">
+                    <img id="displayFooter" src="" class="footer-img" style="display: none;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Copyright Footer (Not in Print Area) -->
+        <div class="no-print text-center py-6 mt-8 text-gray-600 text-sm">
+            <p>© 2025 DreamInnovation. All rights reserved. Operated by 
+                <a href="https://www.linkedin.com/in/md-hadisur-rahman24/" 
+                   target="_blank" 
+                   class="text-indigo-600 hover:text-indigo-800 hover:underline font-medium">
+                    Hadisur Rahman
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let excelData = [];
+        let filteredData = [];
+        let images = {
+            logo: null,
+            header: null,
+            preparedSig: null,
+            checkedSig: null,
+            approvedSig: null,
+            footer: null
+        };
+
+        // Store name to Bill To mapping
+        const storeMapping = {
+            'Norp Knit': { billTo: 'Norp Knit Industries Ltd. Unit 02, Shi-152/2, Islampur, Kodda, Nandun, Bason, Gazipur -1700, Bangladesh', prefix: 'CR' },
+            'ESL': { billTo: 'Everbright Sweaters Ltd. (ESL), Kathgora - Mridhabari Rd, Zirabo 1341', prefix: 'CRESL-' },
+            'ICCL': { billTo: 'International Classic Composite Ltd (ICCL). Naojur, Kodda, Joydebpur, Gazipur', prefix: 'CRICCL-' },
+            'ICCL-Magnum': { billTo: 'Magnum BD Ltd. Naojur, Kodda, Joydebpur, Gazipur', prefix: 'CRMG-' },
+            'ICCL-BFL': { billTo: 'Body Fashion Ltd. (BFL), Naojur, Kodda, Joydebpur, Gazipur', prefix: 'CRBFL-' },
+            'HA-MEEM': { billTo: 'Creative Collection Ltd (CCL), Nishat Nagar,Tongi-1711. Gazipur, Bangladesh', prefix: 'CRCCL-' },
+            'GBAL': { billTo: 'Good Bags & Accessories Ltd. Jadurchar Road, Hemayetpur, Savar', prefix: 'CRGBAL-' },
+            'RUPSHI': { billTo: 'Rupshi Showroom, City Economic Zone, Rupshi, Rupganj, Narayanganj', prefix: 'CRRUPSHI-' }
+        };
+
+        // Load saved data from localStorage on page load
+        function loadFromStorage() {
+            const savedData = localStorage.getItem('invoiceExcelData');
+            const savedImages = localStorage.getItem('invoiceImages');
+            const savedSettings = localStorage.getItem('invoiceSettings');
+            
+            if (savedData) {
+                excelData = JSON.parse(savedData);
+                filteredData = [...excelData];
+                populateUnitFilter();
+                updateDataTable();
+                document.getElementById('fileName').textContent = '📁 Data loaded from storage';
+                document.getElementById('fileName').classList.remove('hidden');
+            }
+            
+            if (savedImages) {
+                images = JSON.parse(savedImages);
+                // Restore image previews
+                if (images.logo) { document.getElementById('logoPreview').src = images.logo; document.getElementById('logoPreview').classList.remove('hidden'); }
+                if (images.header) { document.getElementById('headerPreview').src = images.header; document.getElementById('headerPreview').classList.remove('hidden'); }
+                if (images.preparedSig) { document.getElementById('preparedSigPreview').src = images.preparedSig; document.getElementById('preparedSigPreview').classList.remove('hidden'); }
+                if (images.checkedSig) { document.getElementById('checkedSigPreview').src = images.checkedSig; document.getElementById('checkedSigPreview').classList.remove('hidden'); }
+                if (images.approvedSig) { document.getElementById('approvedSigPreview').src = images.approvedSig; document.getElementById('approvedSigPreview').classList.remove('hidden'); }
+                if (images.footer) { document.getElementById('footerPreview').src = images.footer; document.getElementById('footerPreview').classList.remove('hidden'); }
+            }
+            
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                if (settings.invoicePrefix) document.getElementById('invoicePrefix').value = settings.invoicePrefix;
+                if (settings.invoiceNumber) document.getElementById('invoiceNumber').value = settings.invoiceNumber;
+                if (settings.companyAddress) document.getElementById('companyAddress').value = settings.companyAddress;
+                if (settings.invoiceMonth) document.getElementById('invoiceMonth').value = settings.invoiceMonth;
+                if (settings.salesType) document.getElementById('salesType').value = settings.salesType;
+                if (settings.paymentMethod) document.getElementById('paymentMethod').value = settings.paymentMethod;
+                if (settings.billTo) document.getElementById('billTo').value = settings.billTo;
+                if (settings.storeFilter) document.getElementById('storeFilter').value = settings.storeFilter;
+                if (settings.preparedName) document.getElementById('preparedName').value = settings.preparedName;
+                if (settings.preparedPosition) document.getElementById('preparedPosition').value = settings.preparedPosition;
+                if (settings.checkedName) document.getElementById('checkedName').value = settings.checkedName;
+                if (settings.checkedPosition) document.getElementById('checkedPosition').value = settings.checkedPosition;
+                if (settings.approvedName) document.getElementById('approvedName').value = settings.approvedName;
+                if (settings.approvedPosition) document.getElementById('approvedPosition').value = settings.approvedPosition;
+            }
+        }
+        
+        // Save data to localStorage
+        function saveToStorage() {
+            localStorage.setItem('invoiceExcelData', JSON.stringify(excelData));
+            localStorage.setItem('invoiceImages', JSON.stringify(images));
+            
+            const settings = {
+                invoicePrefix: document.getElementById('invoicePrefix').value,
+                invoiceNumber: document.getElementById('invoiceNumber').value,
+                companyAddress: document.getElementById('companyAddress').value,
+                invoiceMonth: document.getElementById('invoiceMonth').value,
+                salesType: document.getElementById('salesType').value,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                billTo: document.getElementById('billTo').value,
+                storeFilter: document.getElementById('storeFilter').value,
+                preparedName: document.getElementById('preparedName').value,
+                preparedPosition: document.getElementById('preparedPosition').value,
+                checkedName: document.getElementById('checkedName').value,
+                checkedPosition: document.getElementById('checkedPosition').value,
+                approvedName: document.getElementById('approvedName').value,
+                approvedPosition: document.getElementById('approvedPosition').value
+            };
+            localStorage.setItem('invoiceSettings', JSON.stringify(settings));
+        }
+        
+        // Clear all stored data
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                localStorage.removeItem('invoiceExcelData');
+                localStorage.removeItem('invoiceImages');
+                localStorage.removeItem('invoiceSettings');
+                excelData = [];
+                filteredData = [];
+                images = { logo: null, header: null, preparedSig: null, checkedSig: null, approvedSig: null, footer: null };
+                updateDataTable();
+                populateUnitFilter();
+                location.reload();
+            }
+        }
+
+        // Set default date
+        document.getElementById('invoiceDate').valueAsDate = new Date();
+        
+        // Load saved data on page load
+        loadFromStorage();
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+
+        // Drag and drop
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-indigo-50'); });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-indigo-500', 'bg-indigo-50'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+            if (e.dataTransfer.files.length > 0) handleFile({ target: { files: e.dataTransfer.files } });
+        });
+
+        function previewImage(input, previewId) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById(previewId);
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    
+                    // Store image data
+                    if (previewId === 'logoPreview') images.logo = e.target.result;
+                    else if (previewId === 'headerPreview') images.header = e.target.result;
+                    else if (previewId === 'preparedSigPreview') images.preparedSig = e.target.result;
+                    else if (previewId === 'checkedSigPreview') images.checkedSig = e.target.result;
+                    else if (previewId === 'approvedSigPreview') images.approvedSig = e.target.result;
+                    else if (previewId === 'footerPreview') images.footer = e.target.result;
+                    
+                    // Save to localStorage
+                    saveToStorage();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').textContent = `📁 ${file.name}`;
+            document.getElementById('fileName').classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+                // Debug: Log the first row to see what column names we have
+                console.log("First row of Excel data:", jsonData[0]);
+
+                // Clear previous data and load new file data
+                // Try to find the correct column names (case-insensitive)
+                excelData = jsonData.map((row, idx) => {
+                    // Try to find unit name column (case-insensitive)
+                    let unitName = '';
+                    if (row['Unit Name'] !== undefined) unitName = row['Unit Name'];
+                    else if (row['UnitName'] !== undefined) unitName = row['UnitName'];
+                    else if (row['unit name'] !== undefined) unitName = row['unit name'];
+                    else if (row['unitname'] !== undefined) unitName = row['unitname'];
+                    else if (row['UNIT NAME'] !== undefined) unitName = row['UNIT NAME'];
+                    else {
+                        // Try to find any column with "unit" in the name
+                        for (let key in row) {
+                            if (key.toLowerCase().includes('unit')) {
+                                unitName = row[key];
+                                break;
+                            }
+                        }
+                    }
+
+                    // Try to find employee column (case-insensitive)
+                    let employeeValue = 0;
+                    let employeeRaw = '';
+                    if (row['Employee'] !== undefined) {
+                        employeeRaw = row['Employee'];
+                        employeeValue = parseFloat(row['Employee']) || 0;
+                    } else if (row['employee'] !== undefined) {
+                        employeeRaw = row['employee'];
+                        employeeValue = parseFloat(row['employee']) || 0;
+                    } else if (row['EMPLOYEE'] !== undefined) {
+                        employeeRaw = row['EMPLOYEE'];
+                        employeeValue = parseFloat(row['EMPLOYEE']) || 0;
+                    } else if (row['No of Employees'] !== undefined) {
+                        employeeRaw = row['No of Employees'];
+                        employeeValue = parseFloat(row['No of Employees']) || 0;
+                    } else if (row['No. of Employees'] !== undefined) {
+                        employeeRaw = row['No. of Employees'];
+                        employeeValue = parseFloat(row['No. of Employees']) || 0;
+                    } else {
+                        // Try to find any column with "employee" in the name
+                        for (let key in row) {
+                            if (key.toLowerCase().includes('employee')) {
+                                employeeRaw = row[key];
+                                employeeValue = parseFloat(row[key]) || 0;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Try to find credit amount column (case-insensitive)
+                    let credit = 0;
+                    if (row['Credit Amount'] !== undefined) credit = parseFloat(row['Credit Amount']) || 0;
+                    else if (row['CreditAmount'] !== undefined) credit = parseFloat(row['CreditAmount']) || 0;
+                    else if (row['credit amount'] !== undefined) credit = parseFloat(row['credit amount']) || 0;
+                    else if (row['creditamount'] !== undefined) credit = parseFloat(row['creditamount']) || 0;
+                    else if (row['CREDIT AMOUNT'] !== undefined) credit = parseFloat(row['CREDIT AMOUNT']) || 0;
+                    else if (row['Credit'] !== undefined) credit = parseFloat(row['Credit']) || 0;
+                    else if (row['credit'] !== undefined) credit = parseFloat(row['credit']) || 0;
+                    else if (row['CREDIT'] !== undefined) credit = parseFloat(row['CREDIT']) || 0;
+                    else {
+                        // Try to find any column with "credit" in the name
+                        for (let key in row) {
+                            if (key.toLowerCase().includes('credit')) {
+                                credit = parseFloat(row[key]) || 0;
+                                break;
+                            }
+                        }
+                    }
+
+                    return {
+                        unitName: unitName || '',
+                        employeeRaw: employeeRaw !== '' ? employeeRaw : employeeValue,
+                        employee: employeeValue,
+                        credit: credit
+                    };
+                });
+
+                // Replace filtered data with new data
+                filteredData = [...excelData];
+                
+                // Reset unit filter to show all data
+                document.getElementById('unitFilter').value = '';
+                
+                populateUnitFilter();
+                updateDataTable();
+                
+                // Save to localStorage (replaces previous data)
+                saveToStorage();
+                
+                // Show success message
+                document.getElementById('fileName').textContent = `📁 ${file.name} (${excelData.length} rows loaded)`;
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function populateUnitFilter() {
+            const filter = document.getElementById('unitFilter');
+            const units = [...new Set(excelData.map(d => d.unitName).filter(u => u))];
+            filter.innerHTML = '<option value="">-- Select Unit --</option>' + 
+                units.map(u => `<option value="${u}">${u}</option>`).join('');
+        }
+
+        function applyStoreFilter() {
+            const selected = document.getElementById('storeFilter').value;
+            
+            // Update Bill To and Invoice Prefix based on Store selection
+            if (selected && storeMapping[selected]) {
+                document.getElementById('billTo').value = storeMapping[selected].billTo;
+                document.getElementById('invoicePrefix').value = storeMapping[selected].prefix;
+            } else {
+                document.getElementById('billTo').value = '';
+                document.getElementById('invoicePrefix').value = 'CR';
+            }
+        }
+
+        function applyUnitFilter() {
+            const selected = document.getElementById('unitFilter').value;
+            filteredData = selected ? excelData.filter(d => d.unitName === selected) : [...excelData];
+            updateDataTable();
+        }
+
+        function updateDataTable() {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = filteredData.map((row, idx) => `
+                <tr>
+                    <td class="border px-4 py-2"><input type="text" value="${row.unitName}" onchange="updateRow(${idx}, 'unitName', this.value)" class="w-full border-0 focus:ring-0"></td>
+                    <td class="border px-4 py-2 text-center"><input type="text" value="${row.employeeRaw}" onchange="updateRow(${idx}, 'employee', this.value)" class="w-full border-0 focus:ring-0 text-center"></td>
+                    <td class="border px-4 py-2 text-right"><input type="number" value="${row.credit}" onchange="updateRow(${idx}, 'credit', parseFloat(this.value))" class="w-full border-0 focus:ring-0 text-right"></td>
+                    <td class="border px-4 py-2 text-center"><button onclick="removeRow(${idx})" class="text-red-500 hover:text-red-700">❌</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function updateRow(idx, field, value) {
+            if (field === 'employee') {
+                // Store both raw value and parsed value
+                filteredData[idx].employeeRaw = value;
+                filteredData[idx].employee = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
+            } else if (field === 'credit') {
+                filteredData[idx][field] = parseFloat(value) || 0;
+            } else {
+                filteredData[idx][field] = value;
+            }
+            
+            // Update excelData as well and save
+            excelData = [...filteredData];
+            saveToStorage();
+        }
+
+        function removeRow(idx) {
+            filteredData.splice(idx, 1);
+            excelData = [...filteredData];
+            updateDataTable();
+            saveToStorage();
+        }
+
+        function addManualEntry() {
+            const unit = document.getElementById('manualUnit').value;
+            const employeeRaw = document.getElementById('manualEmployee').value;
+            const employee = isNaN(parseFloat(employeeRaw)) ? 0 : parseFloat(employeeRaw);
+            const credit = parseFloat(document.getElementById('manualCredit').value) || 0;
+            
+            if (unit || credit || employee) {
+                filteredData.push({ 
+                    unitName: unit, 
+                    employeeRaw: employeeRaw,
+                    employee: employee, 
+                    credit: credit 
+                });
+                excelData = [...filteredData];
+                updateDataTable();
+                saveToStorage();
+                document.getElementById('manualUnit').value = '';
+                document.getElementById('manualEmployee').value = '';
+                document.getElementById('manualCredit').value = '';
+            }
+        }
+
+        function numberToWords(num) {
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 
+                'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            
+            if (num === 0) return 'Zero';
+            
+            function convert(n) {
+                if (n < 20) return ones[n];
+                if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+                if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convert(n % 100) : '');
+                if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+                if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+                return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+            }
+            
+            const intPart = Math.floor(num);
+            const decPart = Math.round((num - intPart) * 100);
+            
+            let result = convert(intPart) + ' Taka';
+            if (decPart > 0) result += ' and ' + convert(decPart) + ' Paisa';
+            result += ' Only';
+            
+            return result;
+        }
+
+        function generateInvoice() {
+            const date = document.getElementById('invoiceDate').value;
+            const prefix = document.getElementById('invoicePrefix').value;
+            const invoiceNum = document.getElementById('invoiceNumber').value;
+            const address = document.getElementById('companyAddress').value;
+            const billTo = document.getElementById('billTo').value;
+            const month = document.getElementById('invoiceMonth').value;
+            const salesType = document.getElementById('salesType').value;
+            const payment = document.getElementById('paymentMethod').value;
+            const unitFilter = document.getElementById('unitFilter').value;
+
+            // Format date
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
+
+            // Display values
+            document.getElementById('displayDate').textContent = formattedDate;
+            document.getElementById('displayInvoiceNum').textContent = prefix + invoiceNum;
+            document.getElementById('displayAddress').textContent = address;
+            document.getElementById('displayBillTo').textContent = billTo;
+            document.getElementById('displayMonth').textContent = month;
+            document.getElementById('displaySalesType').textContent = salesType;
+            document.getElementById('displayPayment').textContent = payment;
+
+            // Images - preserve original colors
+            if (images.logo) { 
+                document.getElementById('displayLogo').src = images.logo; 
+                document.getElementById('displayLogo').style.display = 'block'; 
+            }
+            if (images.header) { 
+                document.getElementById('displayHeader').src = images.header; 
+                document.getElementById('displayHeader').style.display = 'block'; 
+            }
+            if (images.preparedSig) { 
+                document.getElementById('displayPreparedSig').src = images.preparedSig; 
+                document.getElementById('displayPreparedSig').style.display = 'block'; 
+            }
+            if (images.checkedSig) { 
+                document.getElementById('displayCheckedSig').src = images.checkedSig; 
+                document.getElementById('displayCheckedSig').style.display = 'block'; 
+            }
+            if (images.approvedSig) { 
+                document.getElementById('displayApprovedSig').src = images.approvedSig; 
+                document.getElementById('displayApprovedSig').style.display = 'block'; 
+            }
+            if (images.footer) { 
+                document.getElementById('displayFooter').src = images.footer; 
+                document.getElementById('displayFooter').style.display = 'block'; 
+            }
+
+            // Signature names
+            document.getElementById('displayPreparedName').textContent = document.getElementById('preparedName').value;
+            document.getElementById('displayPreparedPosition').textContent = document.getElementById('preparedPosition').value;
+            document.getElementById('displayCheckedName').textContent = document.getElementById('checkedName').value;
+            document.getElementById('displayCheckedPosition').textContent = document.getElementById('checkedPosition').value;
+            document.getElementById('displayApprovedName').textContent = document.getElementById('approvedName').value;
+            document.getElementById('displayApprovedPosition').textContent = document.getElementById('approvedPosition').value;
+
+            // Table - Show filtered data based on unit filter
+            const tbody = document.getElementById('invoiceTableBody');
+            tbody.innerHTML = ''; // Clear previous data
+            let total = 0;
+            
+            // Show all filtered data (whether filtered by unit or all data)
+            filteredData.forEach(row => {
+                total += row.credit;
+                tbody.innerHTML += `<tr>
+                    <td style="border: 1px solid #000; padding: 6px 10px;">${row.unitName || ''}</td>
+                    <td style="border: 1px solid #000; padding: 6px 10px; text-align: center;">${row.employeeRaw}</td>
+                    <td style="border: 1px solid #000; padding: 6px 10px; text-align: right;">৳${row.credit.toFixed(2)}</td>
+                </tr>`;
+            });
+            
+            // Save settings after generating invoice
+            saveToStorage();
+
+            document.getElementById('grandTotal').textContent = '৳' + total.toFixed(2);
+            document.getElementById('amountInWords').textContent = numberToWords(total);
+
+            document.getElementById('invoicePreview').style.display = 'block';
+            document.getElementById('invoicePreview').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
