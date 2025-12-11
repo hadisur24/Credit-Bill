@@ -181,6 +181,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div class="border rounded-lg p-3 text-center">
                             <p class="text-sm font-medium text-gray-700 mb-2">Company Logo</p>
+                            <button onclick="loadDefaultImage('logo')" class="cursor-pointer bg-green-600 text-white px-3 py-2 rounded text-sm mb-2 hover:bg-green-700">Load Default</button>
                             <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
                                 Upload <input type="file" id="logoInput" accept="image/*" class="hidden" onchange="previewImage(this, 'logoPreview')">
                             </label>
@@ -188,6 +189,7 @@
                         </div>
                         <div class="border rounded-lg p-3 text-center">
                             <p class="text-sm font-medium text-gray-700 mb-2">Header Design</p>
+                            <button onclick="loadDefaultImage('header')" class="cursor-pointer bg-green-600 text-white px-3 py-2 rounded text-sm mb-2 hover:bg-green-700">Load Default</button>
                             <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
                                 Upload <input type="file" id="headerInput" accept="image/*" class="hidden" onchange="previewImage(this, 'headerPreview')">
                             </label>
@@ -195,6 +197,7 @@
                         </div>
                         <div class="border rounded-lg p-3 text-center">
                             <p class="text-sm font-medium text-gray-700 mb-2">Prepared By Signature</p>
+                            <button onclick="loadDefaultImage('preparedSig')" class="cursor-pointer bg-green-600 text-white px-3 py-2 rounded text-sm mb-2 hover:bg-green-700">Load Default</button>
                             <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
                                 Upload <input type="file" id="preparedSigInput" accept="image/*" class="hidden" onchange="previewImage(this, 'preparedSigPreview')">
                             </label>
@@ -202,6 +205,7 @@
                         </div>
                         <div class="border rounded-lg p-3 text-center">
                             <p class="text-sm font-medium text-gray-700 mb-2">Checked By Signature</p>
+                            <button onclick="loadDefaultImage('checkedSig')" class="cursor-pointer bg-green-600 text-white px-3 py-2 rounded text-sm mb-2 hover:bg-green-700">Load Default</button>
                             <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
                                 Upload <input type="file" id="checkedSigInput" accept="image/*" class="hidden" onchange="previewImage(this, 'checkedSigPreview')">
                             </label>
@@ -209,6 +213,7 @@
                         </div>
                         <div class="border rounded-lg p-3 text-center">
                             <p class="text-sm font-medium text-gray-700 mb-2">Approved By Signature</p>
+                            <button onclick="loadDefaultImage('approvedSig')" class="cursor-pointer bg-green-600 text-white px-3 py-2 rounded text-sm mb-2 hover:bg-green-700">Load Default</button>
                             <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
                                 Upload <input type="file" id="approvedSigInput" accept="image/*" class="hidden" onchange="previewImage(this, 'approvedSigPreview')">
                             </label>
@@ -216,6 +221,7 @@
                         </div>
                         <div class="border rounded-lg p-3 text-center">
                             <p class="text-sm font-medium text-gray-700 mb-2">Footer Image</p>
+                            <button onclick="loadDefaultImage('footer')" class="cursor-pointer bg-green-600 text-white px-3 py-2 rounded text-sm mb-2 hover:bg-green-700">Load Default</button>
                             <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm inline-block">
                                 Upload <input type="file" id="footerInput" accept="image/*" class="hidden" onchange="previewImage(this, 'footerPreview')">
                             </label>
@@ -504,6 +510,16 @@
             footer: null
         };
 
+        // Default image URLs from user
+        const defaultImages = {
+            logo: "https://lh3.googleusercontent.com/d/1fwtQu3Fqq9FQs-QoTYEkhm-Vz3BPryAQ=w2000",
+            header: "https://lh3.googleusercontent.com/d/1lQI7gYEz3IlGbu2C4wWbwMRlcl05qy0w=w2000",
+            preparedSig: "https://lh3.googleusercontent.com/d/1fbPDJ1flBuObE5YgjmTu8SEzf49gd3aD=w2000",
+            checkedSig: "https://lh3.googleusercontent.com/d/1O7UaGG17NDavrlmAURMzffrDXVTDNqF_=w2000",
+            approvedSig: "https://lh3.googleusercontent.com/d/15jlJUIO6IKT5eszrG_-kgUUlAS6ULNRh=w2000",
+            footer: "https://lh3.googleusercontent.com/d/1S_3BUo0cwBgJX2eg8WysLoqoBlFUnlyz=w2000"
+        };
+
         // Store name to Bill To mapping
         const storeMapping = {
             'Norp Knit': { billTo: 'Norp Knit Industries Ltd. Unit 02, Shi-152/2, Islampur, Kodda, Nandun, Bason, Gazipur -1700, Bangladesh', prefix: 'CR' },
@@ -516,11 +532,55 @@
             'RUPSHI': { billTo: 'Rupshi Showroom, City Economic Zone, Rupshi, Rupganj, Narayanganj', prefix: 'CRRUPSHI-' }
         };
 
+        // Function to load default images
+        function loadDefaultImage(imageType) {
+            const url = defaultImages[imageType];
+            if (!url) return;
+            
+            // Update the images object
+            images[imageType] = url;
+            
+            // Update the preview
+            const previewId = imageType + 'Preview';
+            const preview = document.getElementById(previewId);
+            preview.src = url;
+            preview.classList.remove('hidden');
+            
+            // Show success message
+            alert(`${imageType} loaded successfully from default URL!`);
+            
+            // Save to localStorage
+            saveToStorage();
+        }
+
+        // Load all default images
+        function loadAllDefaultImages() {
+            Object.keys(defaultImages).forEach(imageType => {
+                if (!images[imageType]) { // Only load if not already loaded
+                    images[imageType] = defaultImages[imageType];
+                    
+                    // Update the preview if element exists
+                    const previewId = imageType + 'Preview';
+                    const preview = document.getElementById(previewId);
+                    if (preview) {
+                        preview.src = defaultImages[imageType];
+                        preview.classList.remove('hidden');
+                    }
+                }
+            });
+            
+            // Save to localStorage
+            saveToStorage();
+        }
+
         // Load saved data from localStorage on page load
         function loadFromStorage() {
             const savedData = localStorage.getItem('invoiceExcelData');
             const savedImages = localStorage.getItem('invoiceImages');
             const savedSettings = localStorage.getItem('invoiceSettings');
+            
+            // Load default images first (will be overridden by saved images if any)
+            loadAllDefaultImages();
             
             if (savedData) {
                 excelData = JSON.parse(savedData);
@@ -532,14 +592,21 @@
             }
             
             if (savedImages) {
-                images = JSON.parse(savedImages);
-                // Restore image previews
-                if (images.logo) { document.getElementById('logoPreview').src = images.logo; document.getElementById('logoPreview').classList.remove('hidden'); }
-                if (images.header) { document.getElementById('headerPreview').src = images.header; document.getElementById('headerPreview').classList.remove('hidden'); }
-                if (images.preparedSig) { document.getElementById('preparedSigPreview').src = images.preparedSig; document.getElementById('preparedSigPreview').classList.remove('hidden'); }
-                if (images.checkedSig) { document.getElementById('checkedSigPreview').src = images.checkedSig; document.getElementById('checkedSigPreview').classList.remove('hidden'); }
-                if (images.approvedSig) { document.getElementById('approvedSigPreview').src = images.approvedSig; document.getElementById('approvedSigPreview').classList.remove('hidden'); }
-                if (images.footer) { document.getElementById('footerPreview').src = images.footer; document.getElementById('footerPreview').classList.remove('hidden'); }
+                const savedImagesObj = JSON.parse(savedImages);
+                // Override default images with saved ones
+                Object.keys(savedImagesObj).forEach(key => {
+                    if (savedImagesObj[key]) {
+                        images[key] = savedImagesObj[key];
+                        
+                        // Update previews
+                        const previewId = key + 'Preview';
+                        const preview = document.getElementById(previewId);
+                        if (preview) {
+                            preview.src = savedImagesObj[key];
+                            preview.classList.remove('hidden');
+                        }
+                    }
+                });
             }
             
             if (savedSettings) {
@@ -585,18 +652,48 @@
             localStorage.setItem('invoiceSettings', JSON.stringify(settings));
         }
         
-        // Clear all stored data
+        // Clear all stored data (but keep default images)
         function clearAllData() {
-            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            if (confirm('Are you sure you want to clear all data? This will keep default images but remove uploaded images and Excel data.')) {
                 localStorage.removeItem('invoiceExcelData');
                 localStorage.removeItem('invoiceImages');
                 localStorage.removeItem('invoiceSettings');
                 excelData = [];
                 filteredData = [];
-                images = { logo: null, header: null, preparedSig: null, checkedSig: null, approvedSig: null, footer: null };
+                
+                // Reset images to defaults only
+                images = {
+                    logo: defaultImages.logo,
+                    header: defaultImages.header,
+                    preparedSig: defaultImages.preparedSig,
+                    checkedSig: defaultImages.checkedSig,
+                    approvedSig: defaultImages.approvedSig,
+                    footer: defaultImages.footer
+                };
+                
                 updateDataTable();
                 populateUnitFilter();
-                location.reload();
+                
+                // Reload default images
+                loadAllDefaultImages();
+                
+                // Reset form fields
+                document.getElementById('invoicePrefix').value = 'CR';
+                document.getElementById('invoiceNumber').value = '';
+                document.getElementById('companyAddress').value = 'ROSHOD FPS, Level 2, Hose#02, Road#96, Gulshan-2 Dhaka 1212';
+                document.getElementById('invoiceMonth').value = '';
+                document.getElementById('salesType').value = 'Credit';
+                document.getElementById('paymentMethod').value = 'BFTN/Cheque/Cash';
+                document.getElementById('billTo').value = '';
+                document.getElementById('storeFilter').value = '';
+                document.getElementById('preparedName').value = '';
+                document.getElementById('preparedPosition').value = '';
+                document.getElementById('checkedName').value = '';
+                document.getElementById('checkedPosition').value = '';
+                document.getElementById('approvedName').value = '';
+                document.getElementById('approvedPosition').value = '';
+                
+                alert('All data cleared! Default images have been restored.');
             }
         }
 
@@ -629,15 +726,14 @@
                     preview.classList.remove('hidden');
                     
                     // Store image data
-                    if (previewId === 'logoPreview') images.logo = e.target.result;
-                    else if (previewId === 'headerPreview') images.header = e.target.result;
-                    else if (previewId === 'preparedSigPreview') images.preparedSig = e.target.result;
-                    else if (previewId === 'checkedSigPreview') images.checkedSig = e.target.result;
-                    else if (previewId === 'approvedSigPreview') images.approvedSig = e.target.result;
-                    else if (previewId === 'footerPreview') images.footer = e.target.result;
+                    const imageType = previewId.replace('Preview', '');
+                    images[imageType] = e.target.result;
                     
                     // Save to localStorage
                     saveToStorage();
+                    
+                    // Show success message
+                    alert(`${imageType} uploaded successfully!`);
                 };
                 reader.readAsDataURL(file);
             }
