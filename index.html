@@ -147,14 +147,77 @@
             flex: 1;
             padding-bottom: 70px;
         }
+        
+        /* Auto-save indicator */
+        #saveIndicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 1000;
+            font-size: 14px;
+            font-weight: 500;
+            animation: fadeInOut 2s ease-in-out;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            15% { opacity: 1; transform: translateY(0); }
+            85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+        
+        /* Loading overlay */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e5e7eb;
+            border-top: 5px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Auto-save Indicator -->
+    <div id="saveIndicator">✓ Auto-saved</div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p class="mt-4 text-gray-700 font-medium">Loading your data...</p>
+    </div>
+    
     <div class="container mx-auto px-4 py-8">
         <!-- Header -->
         <div class="text-center mb-8 no-print">
             <h1 class="text-4xl font-bold text-indigo-800 mb-2">📄 ROSHOD CREDIT BILL</h1>
             <p class="text-gray-600">Upload Excel file and images to generate credit bill</p>
+            <p class="text-sm text-green-600 mt-1">✅ All data is automatically saved and persists after refresh</p>
         </div>
 
         <!-- Upload Section -->
@@ -499,6 +562,7 @@
     </div>
 
     <script>
+        // Global variables
         let excelData = [];
         let filteredData = [];
         let images = {
@@ -532,6 +596,26 @@
             'RUPSHI': { billTo: 'Rupshi Showroom, City Economic Zone, Rupshi, Rupganj, Narayanganj', prefix: 'CRRUPSHI-' }
         };
 
+        // Auto-save indicator function
+        function showAutoSaveIndicator() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.style.display = 'block';
+            
+            // Hide after animation completes
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2000);
+        }
+
+        // Loading overlay functions
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
         // Function to load default images
         function loadDefaultImage(imageType) {
             const url = defaultImages[imageType];
@@ -546,11 +630,11 @@
             preview.src = url;
             preview.classList.remove('hidden');
             
-            // Show success message
-            alert(`${imageType} loaded successfully from default URL!`);
-            
             // Save to localStorage
             saveToStorage();
+            
+            // Show success message
+            alert(`${imageType} loaded successfully from default URL!`);
         }
 
         // Load all default images
@@ -568,157 +652,244 @@
                     }
                 }
             });
-            
-            // Save to localStorage
-            saveToStorage();
         }
 
-        // Load saved data from localStorage on page load
-        function loadFromStorage() {
-            const savedData = localStorage.getItem('invoiceExcelData');
-            const savedImages = localStorage.getItem('invoiceImages');
-            const savedSettings = localStorage.getItem('invoiceSettings');
-            
-            // Load default images first (will be overridden by saved images if any)
-            loadAllDefaultImages();
-            
-            if (savedData) {
-                excelData = JSON.parse(savedData);
-                filteredData = [...excelData];
-                populateUnitFilter();
-                updateDataTable();
-                document.getElementById('fileName').textContent = '📁 Data loaded from storage';
-                document.getElementById('fileName').classList.remove('hidden');
-            }
-            
-            if (savedImages) {
-                const savedImagesObj = JSON.parse(savedImages);
-                // Override default images with saved ones
-                Object.keys(savedImagesObj).forEach(key => {
-                    if (savedImagesObj[key]) {
-                        images[key] = savedImagesObj[key];
-                        
-                        // Update previews
-                        const previewId = key + 'Preview';
-                        const preview = document.getElementById(previewId);
-                        if (preview) {
-                            preview.src = savedImagesObj[key];
-                            preview.classList.remove('hidden');
-                        }
-                    }
-                });
-            }
-            
-            if (savedSettings) {
-                const settings = JSON.parse(savedSettings);
-                if (settings.invoicePrefix) document.getElementById('invoicePrefix').value = settings.invoicePrefix;
-                if (settings.invoiceNumber) document.getElementById('invoiceNumber').value = settings.invoiceNumber;
-                if (settings.companyAddress) document.getElementById('companyAddress').value = settings.companyAddress;
-                if (settings.invoiceMonth) document.getElementById('invoiceMonth').value = settings.invoiceMonth;
-                if (settings.salesType) document.getElementById('salesType').value = settings.salesType;
-                if (settings.paymentMethod) document.getElementById('paymentMethod').value = settings.paymentMethod;
-                if (settings.billTo) document.getElementById('billTo').value = settings.billTo;
-                if (settings.storeFilter) document.getElementById('storeFilter').value = settings.storeFilter;
-                if (settings.preparedName) document.getElementById('preparedName').value = settings.preparedName;
-                if (settings.preparedPosition) document.getElementById('preparedPosition').value = settings.preparedPosition;
-                if (settings.checkedName) document.getElementById('checkedName').value = settings.checkedName;
-                if (settings.checkedPosition) document.getElementById('checkedPosition').value = settings.checkedPosition;
-                if (settings.approvedName) document.getElementById('approvedName').value = settings.approvedName;
-                if (settings.approvedPosition) document.getElementById('approvedPosition').value = settings.approvedPosition;
+        // Save data to localStorage
+        function saveToStorage() {
+            try {
+                localStorage.setItem('invoiceExcelData', JSON.stringify(excelData));
+                localStorage.setItem('invoiceImages', JSON.stringify(images));
+                
+                const settings = {
+                    invoicePrefix: document.getElementById('invoicePrefix').value,
+                    invoiceNumber: document.getElementById('invoiceNumber').value,
+                    companyAddress: document.getElementById('companyAddress').value,
+                    invoiceMonth: document.getElementById('invoiceMonth').value,
+                    salesType: document.getElementById('salesType').value,
+                    paymentMethod: document.getElementById('paymentMethod').value,
+                    billTo: document.getElementById('billTo').value,
+                    storeFilter: document.getElementById('storeFilter').value,
+                    preparedName: document.getElementById('preparedName').value,
+                    preparedPosition: document.getElementById('preparedPosition').value,
+                    checkedName: document.getElementById('checkedName').value,
+                    checkedPosition: document.getElementById('checkedPosition').value,
+                    approvedName: document.getElementById('approvedName').value,
+                    approvedPosition: document.getElementById('approvedPosition').value
+                };
+                localStorage.setItem('invoiceSettings', JSON.stringify(settings));
+                
+                // Show auto-save indicator
+                showAutoSaveIndicator();
+                
+                console.log('Data saved to localStorage');
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
             }
         }
         
-        // Save data to localStorage
-        function saveToStorage() {
-            localStorage.setItem('invoiceExcelData', JSON.stringify(excelData));
-            localStorage.setItem('invoiceImages', JSON.stringify(images));
+        // Load saved data from localStorage on page load
+        async function loadFromStorage() {
+            showLoading();
             
-            const settings = {
-                invoicePrefix: document.getElementById('invoicePrefix').value,
-                invoiceNumber: document.getElementById('invoiceNumber').value,
-                companyAddress: document.getElementById('companyAddress').value,
-                invoiceMonth: document.getElementById('invoiceMonth').value,
-                salesType: document.getElementById('salesType').value,
-                paymentMethod: document.getElementById('paymentMethod').value,
-                billTo: document.getElementById('billTo').value,
-                storeFilter: document.getElementById('storeFilter').value,
-                preparedName: document.getElementById('preparedName').value,
-                preparedPosition: document.getElementById('preparedPosition').value,
-                checkedName: document.getElementById('checkedName').value,
-                checkedPosition: document.getElementById('checkedPosition').value,
-                approvedName: document.getElementById('approvedName').value,
-                approvedPosition: document.getElementById('approvedPosition').value
-            };
-            localStorage.setItem('invoiceSettings', JSON.stringify(settings));
+            try {
+                const savedData = localStorage.getItem('invoiceExcelData');
+                const savedImages = localStorage.getItem('invoiceImages');
+                const savedSettings = localStorage.getItem('invoiceSettings');
+                
+                // Load default images first (will be overridden by saved images if any)
+                loadAllDefaultImages();
+                
+                if (savedData) {
+                    excelData = JSON.parse(savedData);
+                    filteredData = [...excelData];
+                    populateUnitFilter();
+                    updateDataTable();
+                    document.getElementById('fileName').textContent = '📁 Data loaded from storage';
+                    document.getElementById('fileName').classList.remove('hidden');
+                }
+                
+                if (savedImages) {
+                    const savedImagesObj = JSON.parse(savedImages);
+                    // Override default images with saved ones
+                    Object.keys(savedImagesObj).forEach(key => {
+                        if (savedImagesObj[key]) {
+                            images[key] = savedImagesObj[key];
+                            
+                            // Update previews
+                            const previewId = key + 'Preview';
+                            const preview = document.getElementById(previewId);
+                            if (preview) {
+                                preview.src = savedImagesObj[key];
+                                preview.classList.remove('hidden');
+                            }
+                        }
+                    });
+                }
+                
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    
+                    // Apply all saved settings
+                    if (settings.invoicePrefix) document.getElementById('invoicePrefix').value = settings.invoicePrefix;
+                    if (settings.invoiceNumber) document.getElementById('invoiceNumber').value = settings.invoiceNumber;
+                    if (settings.companyAddress) document.getElementById('companyAddress').value = settings.companyAddress;
+                    if (settings.invoiceMonth) document.getElementById('invoiceMonth').value = settings.invoiceMonth;
+                    if (settings.salesType) document.getElementById('salesType').value = settings.salesType;
+                    if (settings.paymentMethod) document.getElementById('paymentMethod').value = settings.paymentMethod;
+                    if (settings.billTo) document.getElementById('billTo').value = settings.billTo;
+                    if (settings.storeFilter) document.getElementById('storeFilter').value = settings.storeFilter;
+                    if (settings.preparedName) document.getElementById('preparedName').value = settings.preparedName;
+                    if (settings.preparedPosition) document.getElementById('preparedPosition').value = settings.preparedPosition;
+                    if (settings.checkedName) document.getElementById('checkedName').value = settings.checkedName;
+                    if (settings.checkedPosition) document.getElementById('checkedPosition').value = settings.checkedPosition;
+                    if (settings.approvedName) document.getElementById('approvedName').value = settings.approvedName;
+                    if (settings.approvedPosition) document.getElementById('approvedPosition').value = settings.approvedPosition;
+                }
+                
+                // Set default date to today
+                const today = new Date();
+                const formattedDate = today.toISOString().split('T')[0];
+                document.getElementById('invoiceDate').value = formattedDate;
+                
+                // Hide loading after a short delay
+                setTimeout(() => {
+                    hideLoading();
+                    console.log('All data loaded successfully from localStorage');
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                hideLoading();
+                alert('Error loading saved data. Starting fresh...');
+            }
         }
         
         // Clear all stored data (but keep default images)
         function clearAllData() {
             if (confirm('Are you sure you want to clear all data? This will keep default images but remove uploaded images and Excel data.')) {
-                localStorage.removeItem('invoiceExcelData');
-                localStorage.removeItem('invoiceImages');
-                localStorage.removeItem('invoiceSettings');
-                excelData = [];
-                filteredData = [];
+                showLoading();
                 
-                // Reset images to defaults only
-                images = {
-                    logo: defaultImages.logo,
-                    header: defaultImages.header,
-                    preparedSig: defaultImages.preparedSig,
-                    checkedSig: defaultImages.checkedSig,
-                    approvedSig: defaultImages.approvedSig,
-                    footer: defaultImages.footer
-                };
-                
-                updateDataTable();
-                populateUnitFilter();
-                
-                // Reload default images
-                loadAllDefaultImages();
-                
-                // Reset form fields
-                document.getElementById('invoicePrefix').value = 'CR';
-                document.getElementById('invoiceNumber').value = '';
-                document.getElementById('companyAddress').value = 'ROSHOD FPS, Level 2, Hose#02, Road#96, Gulshan-2 Dhaka 1212';
-                document.getElementById('invoiceMonth').value = '';
-                document.getElementById('salesType').value = 'Credit';
-                document.getElementById('paymentMethod').value = 'BFTN/Cheque/Cash';
-                document.getElementById('billTo').value = '';
-                document.getElementById('storeFilter').value = '';
-                document.getElementById('preparedName').value = '';
-                document.getElementById('preparedPosition').value = '';
-                document.getElementById('checkedName').value = '';
-                document.getElementById('checkedPosition').value = '';
-                document.getElementById('approvedName').value = '';
-                document.getElementById('approvedPosition').value = '';
-                
-                alert('All data cleared! Default images have been restored.');
+                try {
+                    localStorage.removeItem('invoiceExcelData');
+                    localStorage.removeItem('invoiceImages');
+                    localStorage.removeItem('invoiceSettings');
+                    
+                    excelData = [];
+                    filteredData = [];
+                    
+                    // Reset images to defaults only
+                    images = {
+                        logo: defaultImages.logo,
+                        header: defaultImages.header,
+                        preparedSig: defaultImages.preparedSig,
+                        checkedSig: defaultImages.checkedSig,
+                        approvedSig: defaultImages.approvedSig,
+                        footer: defaultImages.footer
+                    };
+                    
+                    updateDataTable();
+                    populateUnitFilter();
+                    
+                    // Reload default images
+                    loadAllDefaultImages();
+                    
+                    // Reset form fields
+                    document.getElementById('invoicePrefix').value = 'CR';
+                    document.getElementById('invoiceNumber').value = '';
+                    document.getElementById('companyAddress').value = 'ROSHOD FPS, Level 2, Hose#02, Road#96, Gulshan-2 Dhaka 1212';
+                    document.getElementById('invoiceMonth').value = '';
+                    document.getElementById('salesType').value = 'Credit';
+                    document.getElementById('paymentMethod').value = 'BFTN/Cheque/Cash';
+                    document.getElementById('billTo').value = '';
+                    document.getElementById('storeFilter').value = '';
+                    document.getElementById('preparedName').value = '';
+                    document.getElementById('preparedPosition').value = '';
+                    document.getElementById('checkedName').value = '';
+                    document.getElementById('checkedPosition').value = '';
+                    document.getElementById('approvedName').value = '';
+                    document.getElementById('approvedPosition').value = '';
+                    
+                    // Set date to today
+                    const today = new Date();
+                    const formattedDate = today.toISOString().split('T')[0];
+                    document.getElementById('invoiceDate').value = formattedDate;
+                    
+                    // Clear previews
+                    document.getElementById('invoicePreview').style.display = 'none';
+                    
+                    // Clear file name display
+                    document.getElementById('fileName').classList.add('hidden');
+                    
+                    setTimeout(() => {
+                        hideLoading();
+                        alert('All data cleared! Default images have been restored.');
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('Error clearing data:', error);
+                    hideLoading();
+                    alert('Error clearing data. Please try again.');
+                }
             }
         }
 
-        // Set default date
-        document.getElementById('invoiceDate').valueAsDate = new Date();
-        
-        // Load saved data on page load
-        loadFromStorage();
-
-        // File input handler
-        document.getElementById('fileInput').addEventListener('change', handleFile);
-
-        // Drag and drop
-        const dropZone = document.getElementById('dropZone');
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-indigo-50'); });
-        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-indigo-500', 'bg-indigo-50'); });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
-            if (e.dataTransfer.files.length > 0) handleFile({ target: { files: e.dataTransfer.files } });
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default date
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('invoiceDate').value = formattedDate;
+            
+            // Load saved data
+            loadFromStorage();
+            
+            // Add event listeners for auto-save on input changes
+            const inputsToSave = [
+                'invoicePrefix', 'invoiceNumber', 'companyAddress', 'invoiceMonth',
+                'salesType', 'paymentMethod', 'billTo', 'storeFilter',
+                'preparedName', 'preparedPosition', 'checkedName', 'checkedPosition',
+                'approvedName', 'approvedPosition'
+            ];
+            
+            inputsToSave.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', saveToStorage);
+                    element.addEventListener('change', saveToStorage);
+                }
+            });
+            
+            // File input handler
+            document.getElementById('fileInput').addEventListener('change', handleFile);
+            
+            // Drag and drop setup
+            const dropZone = document.getElementById('dropZone');
+            dropZone.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                dropZone.classList.add('border-indigo-500', 'bg-indigo-50'); 
+            });
+            dropZone.addEventListener('dragleave', (e) => { 
+                e.preventDefault(); 
+                dropZone.classList.remove('border-indigo-500', 'bg-indigo-50'); 
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+                if (e.dataTransfer.files.length > 0) handleFile({ target: { files: e.dataTransfer.files } });
+            });
+            
+            console.log('ROSHOD FPS Invoice Generator initialized');
         });
 
         function previewImage(input, previewId) {
             const file = input.files[0];
             if (file) {
+                // Check file size (limit to 2MB for localStorage)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('Image size should be less than 2MB for optimal performance.');
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const preview = document.getElementById(previewId);
@@ -752,9 +923,6 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(sheet);
-
-                // Debug: Log the first row to see what column names we have
-                console.log("First row of Excel data:", jsonData[0]);
 
                 // Clear previous data and load new file data
                 // Try to find the correct column names (case-insensitive)
@@ -869,6 +1037,9 @@
                 document.getElementById('billTo').value = '';
                 document.getElementById('invoicePrefix').value = 'CR';
             }
+            
+            // Save to localStorage
+            saveToStorage();
         }
 
         function applyUnitFilter() {
