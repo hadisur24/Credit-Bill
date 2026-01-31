@@ -6,6 +6,10 @@
     <title>ROSHOD FPS Invoice Generator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Add jsPDF and JSZip libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* Print Styles - A4 Full Page */
         @media print {
@@ -200,6 +204,36 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* PDF Generation Progress */
+        .progress-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: none;
+            min-width: 300px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4f46e5, #8b5cf6);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
@@ -209,7 +243,19 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
-        <p class="mt-4 text-gray-700 font-medium">Loading your data...</p>
+        <p class="mt-4 text-gray-700 font-medium" id="loadingText">Loading your data...</p>
+    </div>
+    
+    <!-- PDF Generation Progress -->
+    <div id="pdfProgress" class="progress-container">
+        <div class="flex justify-between items-center">
+            <span class="font-medium text-gray-800">Generating PDFs...</span>
+            <span id="progressText" class="text-sm text-gray-600">0/0</span>
+        </div>
+        <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <p id="currentFile" class="text-xs text-gray-500 mt-2 truncate"></p>
     </div>
     
     <div class="container mx-auto px-4 py-8">
@@ -402,13 +448,22 @@
                     </div>
                 </div>
 
-                <div class="flex gap-4">
-                    <button onclick="generateInvoice()" class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <button onclick="generateInvoice()" class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
                         📋 Generate Invoice
                     </button>
-                    <button onclick="window.print()" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                    <button onclick="window.print()" class="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
                         🖨️ Print Invoice
                     </button>
+                    <button onclick="generatePDFForCurrent()" class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        📄 Generate PDF
+                    </button>
+                    <button onclick="generatePDFsForAllUnits()" class="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                        📦 Generate All PDFs (Zip)
+                    </button>
+                </div>
+                
+                <div class="mt-4">
                     <button onclick="clearAllData()" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium">
                         🗑️ Clear All Data
                     </button>
@@ -601,14 +656,14 @@
             const indicator = document.getElementById('saveIndicator');
             indicator.style.display = 'block';
             
-            // Hide after animation completes
             setTimeout(() => {
                 indicator.style.display = 'none';
             }, 2000);
         }
 
         // Loading overlay functions
-        function showLoading() {
+        function showLoading(text = "Loading your data...") {
+            document.getElementById('loadingText').textContent = text;
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
         
@@ -616,34 +671,52 @@
             document.getElementById('loadingOverlay').style.display = 'none';
         }
 
+        // PDF Progress functions
+        function showPDFProgress() {
+            document.getElementById('pdfProgress').style.display = 'block';
+        }
+        
+        function hidePDFProgress() {
+            document.getElementById('pdfProgress').style.display = 'none';
+        }
+        
+        function updatePDFProgress(current, total, fileName = '') {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const currentFile = document.getElementById('currentFile');
+            
+            const percentage = Math.round((current / total) * 100);
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `${current}/${total}`;
+            
+            if (fileName) {
+                currentFile.textContent = `Generating: ${fileName}`;
+            }
+        }
+
         // Function to load default images
         function loadDefaultImage(imageType) {
             const url = defaultImages[imageType];
             if (!url) return;
             
-            // Update the images object
             images[imageType] = url;
             
-            // Update the preview
             const previewId = imageType + 'Preview';
             const preview = document.getElementById(previewId);
             preview.src = url;
             preview.classList.remove('hidden');
             
-            // Save to localStorage
             saveToStorage();
             
-            // Show success message
             alert(`${imageType} loaded successfully from default URL!`);
         }
 
         // Load all default images
         function loadAllDefaultImages() {
             Object.keys(defaultImages).forEach(imageType => {
-                if (!images[imageType]) { // Only load if not already loaded
+                if (!images[imageType]) {
                     images[imageType] = defaultImages[imageType];
                     
-                    // Update the preview if element exists
                     const previewId = imageType + 'Preview';
                     const preview = document.getElementById(previewId);
                     if (preview) {
@@ -678,7 +751,6 @@
                 };
                 localStorage.setItem('invoiceSettings', JSON.stringify(settings));
                 
-                // Show auto-save indicator
                 showAutoSaveIndicator();
                 
                 console.log('Data saved to localStorage');
@@ -696,7 +768,6 @@
                 const savedImages = localStorage.getItem('invoiceImages');
                 const savedSettings = localStorage.getItem('invoiceSettings');
                 
-                // Load default images first (will be overridden by saved images if any)
                 loadAllDefaultImages();
                 
                 if (savedData) {
@@ -710,12 +781,10 @@
                 
                 if (savedImages) {
                     const savedImagesObj = JSON.parse(savedImages);
-                    // Override default images with saved ones
                     Object.keys(savedImagesObj).forEach(key => {
                         if (savedImagesObj[key]) {
                             images[key] = savedImagesObj[key];
                             
-                            // Update previews
                             const previewId = key + 'Preview';
                             const preview = document.getElementById(previewId);
                             if (preview) {
@@ -729,7 +798,6 @@
                 if (savedSettings) {
                     const settings = JSON.parse(savedSettings);
                     
-                    // Apply all saved settings
                     if (settings.invoicePrefix) document.getElementById('invoicePrefix').value = settings.invoicePrefix;
                     if (settings.invoiceNumber) document.getElementById('invoiceNumber').value = settings.invoiceNumber;
                     if (settings.companyAddress) document.getElementById('companyAddress').value = settings.companyAddress;
@@ -746,12 +814,10 @@
                     if (settings.approvedPosition) document.getElementById('approvedPosition').value = settings.approvedPosition;
                 }
                 
-                // Set default date to today
                 const today = new Date();
                 const formattedDate = today.toISOString().split('T')[0];
                 document.getElementById('invoiceDate').value = formattedDate;
                 
-                // Hide loading after a short delay
                 setTimeout(() => {
                     hideLoading();
                     console.log('All data loaded successfully from localStorage');
@@ -764,7 +830,7 @@
             }
         }
         
-        // Clear all stored data (but keep default images)
+        // Clear all stored data
         function clearAllData() {
             if (confirm('Are you sure you want to clear all data? This will keep default images but remove uploaded images and Excel data.')) {
                 showLoading();
@@ -777,7 +843,6 @@
                     excelData = [];
                     filteredData = [];
                     
-                    // Reset images to defaults only
                     images = {
                         logo: defaultImages.logo,
                         header: defaultImages.header,
@@ -790,10 +855,8 @@
                     updateDataTable();
                     populateUnitFilter();
                     
-                    // Reload default images
                     loadAllDefaultImages();
                     
-                    // Reset form fields
                     document.getElementById('invoicePrefix').value = 'CR';
                     document.getElementById('invoiceNumber').value = '';
                     document.getElementById('companyAddress').value = 'ROSHOD FPS, Level 2, Hose#02, Road#96, Gulshan-2 Dhaka 1212';
@@ -809,15 +872,12 @@
                     document.getElementById('approvedName').value = '';
                     document.getElementById('approvedPosition').value = '';
                     
-                    // Set date to today
                     const today = new Date();
                     const formattedDate = today.toISOString().split('T')[0];
                     document.getElementById('invoiceDate').value = formattedDate;
                     
-                    // Clear previews
                     document.getElementById('invoicePreview').style.display = 'none';
                     
-                    // Clear file name display
                     document.getElementById('fileName').classList.add('hidden');
                     
                     setTimeout(() => {
@@ -835,15 +895,12 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Set default date
             const today = new Date();
             const formattedDate = today.toISOString().split('T')[0];
             document.getElementById('invoiceDate').value = formattedDate;
             
-            // Load saved data
             loadFromStorage();
             
-            // Add event listeners for auto-save on input changes
             const inputsToSave = [
                 'invoicePrefix', 'invoiceNumber', 'companyAddress', 'invoiceMonth',
                 'salesType', 'paymentMethod', 'billTo', 'storeFilter',
@@ -859,10 +916,8 @@
                 }
             });
             
-            // File input handler
             document.getElementById('fileInput').addEventListener('change', handleFile);
             
-            // Drag and drop setup
             const dropZone = document.getElementById('dropZone');
             dropZone.addEventListener('dragover', (e) => { 
                 e.preventDefault(); 
@@ -884,7 +939,6 @@
         function previewImage(input, previewId) {
             const file = input.files[0];
             if (file) {
-                // Check file size (limit to 2MB for localStorage)
                 if (file.size > 2 * 1024 * 1024) {
                     alert('Image size should be less than 2MB for optimal performance.');
                     return;
@@ -896,14 +950,11 @@
                     preview.src = e.target.result;
                     preview.classList.remove('hidden');
                     
-                    // Store image data
                     const imageType = previewId.replace('Preview', '');
                     images[imageType] = e.target.result;
                     
-                    // Save to localStorage
                     saveToStorage();
                     
-                    // Show success message
                     alert(`${imageType} uploaded successfully!`);
                 };
                 reader.readAsDataURL(file);
@@ -924,10 +975,7 @@
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-                // Clear previous data and load new file data
-                // Try to find the correct column names (case-insensitive)
                 excelData = jsonData.map((row, idx) => {
-                    // Try to find unit name column (case-insensitive)
                     let unitName = '';
                     if (row['Unit Name'] !== undefined) unitName = row['Unit Name'];
                     else if (row['UnitName'] !== undefined) unitName = row['UnitName'];
@@ -935,7 +983,6 @@
                     else if (row['unitname'] !== undefined) unitName = row['unitname'];
                     else if (row['UNIT NAME'] !== undefined) unitName = row['UNIT NAME'];
                     else {
-                        // Try to find any column with "unit" in the name
                         for (let key in row) {
                             if (key.toLowerCase().includes('unit')) {
                                 unitName = row[key];
@@ -944,7 +991,6 @@
                         }
                     }
 
-                    // Try to find employee column (case-insensitive)
                     let employeeValue = 0;
                     let employeeRaw = '';
                     if (row['Employee'] !== undefined) {
@@ -963,7 +1009,6 @@
                         employeeRaw = row['No. of Employees'];
                         employeeValue = parseFloat(row['No. of Employees']) || 0;
                     } else {
-                        // Try to find any column with "employee" in the name
                         for (let key in row) {
                             if (key.toLowerCase().includes('employee')) {
                                 employeeRaw = row[key];
@@ -973,7 +1018,6 @@
                         }
                     }
 
-                    // Try to find credit amount column (case-insensitive)
                     let credit = 0;
                     if (row['Credit Amount'] !== undefined) credit = parseFloat(row['Credit Amount']) || 0;
                     else if (row['CreditAmount'] !== undefined) credit = parseFloat(row['CreditAmount']) || 0;
@@ -984,7 +1028,6 @@
                     else if (row['credit'] !== undefined) credit = parseFloat(row['credit']) || 0;
                     else if (row['CREDIT'] !== undefined) credit = parseFloat(row['CREDIT']) || 0;
                     else {
-                        // Try to find any column with "credit" in the name
                         for (let key in row) {
                             if (key.toLowerCase().includes('credit')) {
                                 credit = parseFloat(row[key]) || 0;
@@ -1001,19 +1044,15 @@
                     };
                 });
 
-                // Replace filtered data with new data
                 filteredData = [...excelData];
                 
-                // Reset unit filter to show all data
                 document.getElementById('unitFilter').value = '';
                 
                 populateUnitFilter();
                 updateDataTable();
                 
-                // Save to localStorage (replaces previous data)
                 saveToStorage();
                 
-                // Show success message
                 document.getElementById('fileName').textContent = `📁 ${file.name} (${excelData.length} rows loaded)`;
             };
             reader.readAsArrayBuffer(file);
@@ -1029,7 +1068,6 @@
         function applyStoreFilter() {
             const selected = document.getElementById('storeFilter').value;
             
-            // Update Bill To and Invoice Prefix based on Store selection
             if (selected && storeMapping[selected]) {
                 document.getElementById('billTo').value = storeMapping[selected].billTo;
                 document.getElementById('invoicePrefix').value = storeMapping[selected].prefix;
@@ -1038,7 +1076,6 @@
                 document.getElementById('invoicePrefix').value = 'CR';
             }
             
-            // Save to localStorage
             saveToStorage();
         }
 
@@ -1062,7 +1099,6 @@
 
         function updateRow(idx, field, value) {
             if (field === 'employee') {
-                // Store both raw value and parsed value
                 filteredData[idx].employeeRaw = value;
                 filteredData[idx].employee = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
             } else if (field === 'credit') {
@@ -1071,7 +1107,6 @@
                 filteredData[idx][field] = value;
             }
             
-            // Update excelData as well and save
             excelData = [...filteredData];
             saveToStorage();
         }
@@ -1140,13 +1175,10 @@
             const month = document.getElementById('invoiceMonth').value;
             const salesType = document.getElementById('salesType').value;
             const payment = document.getElementById('paymentMethod').value;
-            const unitFilter = document.getElementById('unitFilter').value;
 
-            // Format date
             const dateObj = new Date(date);
             const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/');
 
-            // Display values
             document.getElementById('displayDate').textContent = formattedDate;
             document.getElementById('displayInvoiceNum').textContent = prefix + invoiceNum;
             document.getElementById('displayAddress').textContent = address;
@@ -1155,7 +1187,6 @@
             document.getElementById('displaySalesType').textContent = salesType;
             document.getElementById('displayPayment').textContent = payment;
 
-            // Images - preserve original colors
             if (images.logo) { 
                 document.getElementById('displayLogo').src = images.logo; 
                 document.getElementById('displayLogo').style.display = 'block'; 
@@ -1181,7 +1212,6 @@
                 document.getElementById('displayFooter').style.display = 'block'; 
             }
 
-            // Signature names
             document.getElementById('displayPreparedName').textContent = document.getElementById('preparedName').value;
             document.getElementById('displayPreparedPosition').textContent = document.getElementById('preparedPosition').value;
             document.getElementById('displayCheckedName').textContent = document.getElementById('checkedName').value;
@@ -1189,12 +1219,10 @@
             document.getElementById('displayApprovedName').textContent = document.getElementById('approvedName').value;
             document.getElementById('displayApprovedPosition').textContent = document.getElementById('approvedPosition').value;
 
-            // Table - Show filtered data based on unit filter
             const tbody = document.getElementById('invoiceTableBody');
-            tbody.innerHTML = ''; // Clear previous data
+            tbody.innerHTML = '';
             let total = 0;
             
-            // Show all filtered data (whether filtered by unit or all data)
             filteredData.forEach(row => {
                 total += row.credit;
                 tbody.innerHTML += `<tr>
@@ -1204,7 +1232,6 @@
                 </tr>`;
             });
             
-            // Save settings after generating invoice
             saveToStorage();
 
             document.getElementById('grandTotal').textContent = '৳' + total.toFixed(2);
@@ -1212,6 +1239,198 @@
 
             document.getElementById('invoicePreview').style.display = 'block';
             document.getElementById('invoicePreview').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Function to generate PDF for current view
+        async function generatePDFForCurrent() {
+            if (filteredData.length === 0) {
+                alert('No data available to generate PDF. Please load or enter data first.');
+                return;
+            }
+
+            showLoading('Generating PDF...');
+            
+            try {
+                // First generate the invoice preview
+                generateInvoice();
+                
+                // Wait a bit for the DOM to update
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Create a temporary clone of the invoice preview
+                const invoiceElement = document.getElementById('invoicePreview');
+                const clone = invoiceElement.cloneNode(true);
+                clone.style.position = 'absolute';
+                clone.style.left = '-9999px';
+                clone.style.top = '0';
+                clone.style.display = 'block';
+                document.body.appendChild(clone);
+                
+                // Use html2canvas to capture the invoice
+                const canvas = await html2canvas(clone, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+                
+                // Remove the clone
+                document.body.removeChild(clone);
+                
+                // Create PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210; // A4 width in mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                
+                // Add image to PDF
+                const imgData = canvas.toDataURL('image/png');
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                
+                // Generate filename based on current data
+                const date = document.getElementById('invoiceDate').value;
+                const month = document.getElementById('invoiceMonth').value || 'Invoice';
+                const dateObj = new Date(date);
+                const year = dateObj.getFullYear();
+                
+                let filename = 'ROSHOD_FPS_Invoice.pdf';
+                if (filteredData.length === 1 && filteredData[0].unitName) {
+                    const unitName = filteredData[0].unitName.replace(/[^a-zA-Z0-9]/g, '_');
+                    filename = `${unitName}_${month.replace(/\s+/g, '_')}_${year}.pdf`;
+                } else {
+                    filename = `ROSHOD_FPS_${month.replace(/\s+/g, '_')}_${year}.pdf`;
+                }
+                
+                // Save the PDF
+                pdf.save(filename);
+                
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                hideLoading();
+                alert('Error generating PDF. Please try again.');
+            }
+        }
+
+        // Function to generate PDFs for all units and zip them
+        async function generatePDFsForAllUnits() {
+            if (excelData.length === 0) {
+                alert('No data available to generate PDFs. Please load or enter data first.');
+                return;
+            }
+
+            // Get unique unit names
+            const uniqueUnits = [...new Set(excelData.map(d => d.unitName).filter(u => u))];
+            
+            if (uniqueUnits.length === 0) {
+                alert('No unit names found in the data. Please check your data.');
+                return;
+            }
+
+            showPDFProgress();
+            updatePDFProgress(0, uniqueUnits.length);
+            
+            const zip = new JSZip();
+            
+            try {
+                for (let i = 0; i < uniqueUnits.length; i++) {
+                    const unitName = uniqueUnits[i];
+                    updatePDFProgress(i + 1, uniqueUnits.length, unitName);
+                    
+                    // Filter data for this unit
+                    const unitData = excelData.filter(d => d.unitName === unitName);
+                    
+                    // Temporarily set filteredData to this unit's data
+                    const originalFilteredData = [...filteredData];
+                    filteredData = unitData;
+                    
+                    // Generate invoice for this unit
+                    generateInvoice();
+                    
+                    // Wait for DOM update
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    // Create a temporary clone
+                    const invoiceElement = document.getElementById('invoicePreview');
+                    const clone = invoiceElement.cloneNode(true);
+                    clone.style.position = 'absolute';
+                    clone.style.left = '-9999px';
+                    clone.style.top = '0';
+                    clone.style.display = 'block';
+                    document.body.appendChild(clone);
+                    
+                    // Capture as image
+                    const canvas = await html2canvas(clone, {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+                    
+                    // Remove the clone
+                    document.body.removeChild(clone);
+                    
+                    // Create PDF
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    
+                    const imgWidth = 210;
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    
+                    const imgData = canvas.toDataURL('image/png');
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                    
+                    // Generate PDF as blob
+                    const pdfBlob = pdf.output('blob');
+                    
+                    // Generate filename: Unit Name Month Year
+                    const date = document.getElementById('invoiceDate').value;
+                    const month = document.getElementById('invoiceMonth').value || 'Invoice';
+                    const dateObj = new Date(date);
+                    const year = dateObj.getFullYear();
+                    
+                    const safeUnitName = unitName.replace(/[^a-zA-Z0-9]/g, '_');
+                    const safeMonth = month.replace(/\s+/g, '_');
+                    const filename = `${safeUnitName}_${safeMonth}_${year}.pdf`;
+                    
+                    // Add to zip
+                    zip.file(filename, pdfBlob);
+                    
+                    // Restore original filtered data
+                    filteredData = originalFilteredData;
+                }
+                
+                // Generate zip file
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                
+                // Create download link
+                const date = document.getElementById('invoiceDate').value;
+                const month = document.getElementById('invoiceMonth').value || 'Invoices';
+                const dateObj = new Date(date);
+                const year = dateObj.getFullYear();
+                
+                const safeMonth = month.replace(/\s+/g, '_');
+                const zipFilename = `ROSHOD_FPS_Invoices_${safeMonth}_${year}.zip`;
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = zipFilename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                hidePDFProgress();
+                
+                // Show success message
+                alert(`✅ Successfully generated ${uniqueUnits.length} PDF files and downloaded as zip!`);
+                
+            } catch (error) {
+                console.error('Error generating PDFs:', error);
+                hidePDFProgress();
+                alert('Error generating PDFs. Please try again.');
+            }
         }
     </script>
 </body>
