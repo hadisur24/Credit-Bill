@@ -388,7 +388,6 @@
                             <option value="HA-MEEM">HA-MEEM</option>
                             <option value="GBAL">GBAL</option>
                             <option value="RUPSHI">RUPSHI</option>
-                            <!-- MONDOL Store Added Here -->
                             <option value="MONDOL">MONDOL</option>
                         </select>
                     </div>
@@ -410,21 +409,21 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Prepared By Name</label>
-                        <input type="text" id="preparedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="preparedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg" value="Md Hadisur Rahman">
                         <label class="block text-sm font-medium text-gray-700 mb-1 mt-2">Position</label>
-                        <input type="text" id="preparedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="preparedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg" value="Executive">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Checked By Name</label>
-                        <input type="text" id="checkedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="checkedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg" value="Md. Din Islam">
                         <label class="block text-sm font-medium text-gray-700 mb-1 mt-2">Position</label>
-                        <input type="text" id="checkedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="checkedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg" value="Manager">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Approved By Name</label>
-                        <input type="text" id="approvedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="approvedName" class="w-full px-3 py-2 border border-gray-300 rounded-lg" value="Md. Riadul Hasan">
                         <label class="block text-sm font-medium text-gray-700 mb-1 mt-2">Position</label>
-                        <input type="text" id="approvedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="text" id="approvedPosition" class="w-full px-3 py-2 border border-gray-300 rounded-lg" value="CBO">
                     </div>
                 </div>
 
@@ -616,9 +615,19 @@
             footer: "https://lh3.googleusercontent.com/d/1S_3BUo0cwBgJX2eg8WysLoqoBlFUnlyz=w2000"
         };
 
+        // Default signature settings
+        const defaultSignatureSettings = {
+            preparedName: 'Md Hadisur Rahman',
+            preparedPosition: 'Executive',
+            checkedName: 'Md. Din Islam',
+            checkedPosition: 'Manager',
+            approvedName: 'Md. Riadul Hasan',
+            approvedPosition: 'CBO'
+        };
+
         // Store name to Bill To mapping
         const storeMapping = {
-            'Norp Knit': { billTo: 'Norp Knit Industries Ltd. Unit 02, Shi-152/2, Islampur, Kodda, Nandun, Bason, Gazipur -1700, Bangladesh', prefix: 'CRNORP-' },
+            'Norp Knit': { billTo: 'Norp Knit Industries Ltd. Unit 02, Shi-152/2, Islampur, Kodda, Nandun, Bason, Gazipur -1700, Bangladesh', prefix: 'CR' },
             'ESL': { billTo: 'Everbright Sweaters Ltd. (ESL), Kathgora - Mridhabari Rd, Zirabo 1341', prefix: 'CRESL-' },
             'ICCL': { billTo: 'International Classic Composite Ltd (ICCL). Naojur, Kodda, Joydebpur, Gazipur', prefix: 'CRICCL-' },
             'ICCL-Magnum': { billTo: 'Magnum BD Ltd. Naojur, Kodda, Joydebpur, Gazipur', prefix: 'CRMG-' },
@@ -626,7 +635,6 @@
             'HA-MEEM': { billTo: 'Creative Collection Ltd (CCL), Nishat Nagar,Tongi-1711. Gazipur, Bangladesh', prefix: 'CRCCL-' },
             'GBAL': { billTo: 'Good Bags & Accessories Ltd. Jadurchar Road, Hemayetpur, Savar', prefix: 'CRGBAL-' },
             'RUPSHI': { billTo: 'Rupshi Showroom, City Economic Zone, Rupshi, Rupganj, Narayanganj', prefix: 'CRRUPSHI-' },
-            // MONDOL Store Added Here
             'MONDOL': { billTo: 'MONDOL FABRICS LTD.(Knit Composite) Nayapara,Kashimpur,Gazipur', prefix: 'CRMONDOL-' }
         };
 
@@ -793,6 +801,14 @@
                     if (settings.approvedName) document.getElementById('approvedName').value = settings.approvedName;
                     if (settings.approvedPosition) document.getElementById('approvedPosition').value = settings.approvedPosition;
                 } else {
+                    // Set default signature values if no saved settings
+                    document.getElementById('preparedName').value = defaultSignatureSettings.preparedName;
+                    document.getElementById('preparedPosition').value = defaultSignatureSettings.preparedPosition;
+                    document.getElementById('checkedName').value = defaultSignatureSettings.checkedName;
+                    document.getElementById('checkedPosition').value = defaultSignatureSettings.checkedPosition;
+                    document.getElementById('approvedName').value = defaultSignatureSettings.approvedName;
+                    document.getElementById('approvedPosition').value = defaultSignatureSettings.approvedPosition;
+                    
                     document.getElementById('invoiceMonth').value = getCurrentMonthYear();
                 }
                 
@@ -851,12 +867,14 @@
                     document.getElementById('paymentMethod').value = 'BFTN/Cheque/Cash';
                     document.getElementById('billTo').value = '';
                     document.getElementById('storeFilter').value = '';
-                    document.getElementById('preparedName').value = '';
-                    document.getElementById('preparedPosition').value = '';
-                    document.getElementById('checkedName').value = '';
-                    document.getElementById('checkedPosition').value = '';
-                    document.getElementById('approvedName').value = '';
-                    document.getElementById('approvedPosition').value = '';
+                    
+                    // Restore default signature values
+                    document.getElementById('preparedName').value = defaultSignatureSettings.preparedName;
+                    document.getElementById('preparedPosition').value = defaultSignatureSettings.preparedPosition;
+                    document.getElementById('checkedName').value = defaultSignatureSettings.checkedName;
+                    document.getElementById('checkedPosition').value = defaultSignatureSettings.checkedPosition;
+                    document.getElementById('approvedName').value = defaultSignatureSettings.approvedName;
+                    document.getElementById('approvedPosition').value = defaultSignatureSettings.approvedPosition;
                     
                     const today = new Date();
                     const formattedDate = today.toISOString().split('T')[0];
@@ -867,7 +885,7 @@
                     
                     setTimeout(() => {
                         hideLoading();
-                        alert('All data cleared! Default images have been restored.');
+                        alert('All data cleared! Default values have been restored.');
                     }, 500);
                     
                 } catch (error) {
